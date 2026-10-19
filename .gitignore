@@ -1,0 +1,5 @@
+# WorkBuddy 本地项目数据（记忆、会话状态），不进仓库
+.workbuddy/
+
+__pycache__/
+*.pyc

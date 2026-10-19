@@ -12,7 +12,7 @@
 | 项目定位 | 单个 Python 脚本构成的 **Skill**：把语雀 / Notion / 网页导出的 Markdown 里的 HTML 表现层标签，同义转回标准 Markdown |
 | 核心产物 | `scripts/clean_md.py`（187 行，仅用标准库） |
 | 配套文档 | `SKILL.md`（技能说明，含 frontmatter，供 Skill 运行时读取）、`README.md`（用法与实测） |
-| 分支 / HEAD | `main` @ `f8523da`（见 §4 提交后更新） |
+| 分支 / HEAD | `main`；三端一致于 2026-10-20 在 `6702454` 验证过（当前 HEAD 以 `git log -1` 为准，详见 §4） |
 | 远端 | fetch 走 GitHub；push 同时走 **Gitee + GitHub**（双远端） |
 | 自动同步 | `.githooks/post-commit` 在每次 commit 后逐远端推送，需 `core.hooksPath=.githooks`（已设好） |
 | 运行时 | `C:/Users/lenovo/.workbuddy/binaries/python/versions/3.13.12/python.exe`，**零第三方依赖** |
@@ -41,7 +41,7 @@
 | --- | --- | --- |
 | 2026-10-20 00:32 | `ba44f8a` | `feat: 新增 markdown-html-cleaner 技能` —— 一次性落地 `scripts/clean_md.py` + `SKILL.md` + `README.md`，共 368 行新增 |
 | 2026-10-20 00:59 | `f8523da` | `test: 验证 post-commit 自动推送`（空提交，用于验证钩子） |
-| 2026-10-20 01:0x | 本次会话 | 冒烟测试 → 发现 2 个真实缺陷 → 重构自动推送钩子为仓库内版本化 → 编写本文档 |
+| 2026-10-20 01:05 | `6702454` | `docs: 新增 HANDOFF.md 交接文档与双远端自动推送钩子` —— 冒烟测试、发现缺陷（记入 §8）、钩子版本化改造、编写本文档 |
 
 > ⚠️ **诚实说明**：`f8523da` 之前的设计讨论过程在历史会话中已检索不到（`conversation_search` 无结果）。上表中 00:32 / 00:59 两笔是**从 git 历史与提交信息还原**的；本次会话的内容是**当场实测**的。凡标"实测/已验证"的都跑过命令，凡标"待确认"的都未验证。
 
@@ -55,7 +55,11 @@
    - 同时**发现 2 个真实缺陷**（`--scan` 退出码语义、统计口径算错），见 §8 缺陷 A / B。
 3. **重构自动推送**：原钩子在 `.git/hooks/post-commit`（不版本化、且 `git push -u origin` 一处失败会连累另一处）。改造为 `.githooks/post-commit` + `core.hooksPath=.githooks`，逐 pushurl 推送。
 4. **核对远端连通性**：Gitee / GitHub 两端 `ls-remote` 均可达，当时都停在 `ba44f8a`（即本地领先 1 个提交，说明钩子在 `f8523da` 那次**没有成功推送**——这也是本次改造的直接动因）。
-5. **写本文档**。
+5. **收尾**：加 `.gitignore` 忽略 `.workbuddy/`（本地记忆数据不进技能仓库），写本文档。
+
+> 📌 **关于 SHA**：下文出现的 `6702454` 是"三端同步已验证"这一事实的时间戳，历史不会变。
+> 但**当前 HEAD 请始终以 `git log -1 --oneline` 为准**——后续每次提交都会让 HEAD 前进，
+> 本文档不会跟着改 SHA。判断是否同步一律用 §10.3 的命令（它不依赖任何硬编码 SHA）。
 
 ---
 
@@ -91,18 +95,21 @@
 
 ## 4. 当前仓库状态（本次提交前实测）
 
-```
-分支: main           HEAD: f8523da "test: 验证 post-commit 自动推送"
-工作区: 干净          origin/main: ba44f8a（本地领先 1 个提交，待本次推送）
+```text
+# 2026-10-20 验证时快照（HEAD 会随后续提交前进，以 git log -1 为准）
+分支: main           HEAD: 6702454 "docs: 新增 HANDOFF.md 交接文档与双远端自动推送钩子"
+工作区: 干净          本地 / Gitee / GitHub 三端 main 均为 6702454 ✅ 已同步
 
 remote.origin.url        = https://github.com/icecolaa/markdown-html-cleaner.git   (fetch)
 remote.origin.pushurl[0] = https://gitee.com/ice-colaa/markdown-html-cleaner.git    (push)
 remote.origin.pushurl[1] = https://github.com/icecolaa/markdown-html-cleaner.git    (push)
 
 core.hooksPath = .githooks      →  生效钩子: .githooks/post-commit
+core.autocrlf  = true（全局，本机未单独覆盖）
 ```
 
-> 提交 §2.2 的第 3–5 步后，本地与两端 main 会一致（见 §10 的验证命令）。
+已验证的本次推送结果：Gitee `ba44f8a..6702454`、GitHub `ba44f8a..6702454`，两端 `OK`。
+（顺带把此前一直没推上去的 `f8523da` 一起补到了两端——改造钩子的直接动因就是它当时静默没推成功。）
 
 ---
 
@@ -162,6 +169,8 @@ git diff --stat          # 应只涉及含标签的行，不应整文件重写
 8. **`git push -u origin <branch>` 一处失败即中止** —— 多 pushurl 场景下 Gitee 挂了 GitHub 也收不到。→ 已改为逐 pushurl 推送。
 9. **Windows + Git Bash 下钩子输出中文会乱码** —— 所以 `.githooks/post-commit` 的输出**全部用英文**，中文说明只写在本文档里。**改钩子时请保持这个约定。**
 10. **换行符是整文件 diff 的头号元凶** —— 任何写盘路径都必须带 `newline='\n'`。
+    本机 `core.autocrlf=true`（全局），工作副本里的 `.md`/`.sh` 会被签出成 CRLF，而脚本写回时固定写 LF；因为 git 提交时会把 CRLF 归一成 LF，所以 **diff 依然是干净的，不会出现整文件重写**。
+    因此提交时看到的 `warning: LF will be replaced by CRLF` 是**预期噪音，可忽略**——不要为了消掉它去改 autocrlf，那样反而会触发整仓库重写。
 11. **未跟踪文件无法回滚** —— 脚本没有备份功能。对未被 git 跟踪的目标文件，清洗前先复制一份。
 
 ### 7.3 内容风险类
@@ -273,4 +282,5 @@ git rev-parse main
 | `SKILL.md` | 技能说明（frontmatter + 工作流 + 约束 + 转换规则 + 已知陷阱），供 Skill 运行时读取 |
 | `README.md` | 对外说明：用法、转换对照、关键约束、实测数据 |
 | `.githooks/post-commit` | 双远端自动推送钩子（版本化，输出保持英文） |
+| `.gitignore` | 忽略 `.workbuddy/`（本地记忆数据）与 Python 缓存 |
 | `HANDOFF.md` | 本文档 |
