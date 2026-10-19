@@ -40,7 +40,7 @@
 | 时间 | 提交 | 内容 |
 | --- | --- | --- |
 | 2026-10-20 00:32 | `ba44f8a` | `feat: 新增 markdown-html-cleaner 技能` —— 一次性落地 `scripts/clean_md.py` + `SKILL.md` + `README.md`，共 368 行新增 |
-| 2026-10-20 00:59 | `f8523da` | `test: 验证 post-commit 自动推送`（空提交，用于验证钩子） |
+| 2026-10-20 00:59 | ~~`f8523da`~~ | `test: 验证 post-commit 自动推送`（空提交）。**该提交已在 01:00:20 被 `git reset HEAD~1` 撤销，现已不在历史中，仅作为悬空对象残留**（详见 §7.4） |
 | 2026-10-20 01:05 | `6702454` | `docs: 新增 HANDOFF.md 交接文档与双远端自动推送钩子` —— 冒烟测试、发现缺陷（记入 §8）、钩子版本化改造、编写本文档 |
 
 > 上表只列**实质性**提交。此后若仅是文档润色（如 `9fc476a` 补 `.gitignore` 与 SHA 说明）不再逐条追加，完整历史以 `git log --oneline` 为准。
@@ -56,8 +56,13 @@
    - 清洗后代码块外残留标签 = 0。
    - 同时**发现 2 个真实缺陷**（`--scan` 退出码语义、统计口径算错），见 §8 缺陷 A / B。
 3. **重构自动推送**：原钩子在 `.git/hooks/post-commit`（不版本化、且 `git push -u origin` 一处失败会连累另一处）。改造为 `.githooks/post-commit` + `core.hooksPath=.githooks`，逐 pushurl 推送。
-4. **核对远端连通性**：Gitee / GitHub 两端 `ls-remote` 均可达，当时都停在 `ba44f8a`（即本地领先 1 个提交，说明钩子在 `f8523da` 那次**没有成功推送**——这也是本次改造的直接动因）。
+4. **核对远端连通性**：Gitee / GitHub 两端 `ls-remote` 均可达，都停在 `ba44f8a`。
 5. **收尾**：加 `.gitignore` 忽略 `.workbuddy/`（本地记忆数据不进技能仓库），写本文档。
+6. **（收笔时才发现）HEAD 被并发会话动过**：整理最终 `git log` 时发现 `f8523da` 不见了，`git reflog` 显示 `01:00:20 reset: moving to HEAD~1`。
+   真相是——**上一个会话在本会话开工的同时仍在做收尾**：它此前把 `remote.origin.pushurl` 临时指向
+   `C:/Users/lenovo/AppData/Local/Temp/bare-test.git` 来验证钩子，收尾时还原了真实 pushurl 并 reset 掉测试提交。
+   所以本文开头看到的"临时 pushurl"和"本地领先 1 个提交"都是**上一会话的中间状态**，不是稳定事实。
+   → 已据此修正本文档，并把教训写进 §7.4。
 
 > 📌 **关于 SHA**：下文出现的 `6702454` 是"三端同步已验证"这一事实的时间戳，历史不会变。
 > 但**当前 HEAD 请始终以 `git log -1 --oneline` 为准**——后续每次提交都会让 HEAD 前进，
@@ -110,8 +115,11 @@ core.hooksPath = .githooks      →  生效钩子: .githooks/post-commit
 core.autocrlf  = true（全局，本机未单独覆盖）
 ```
 
-已验证的本次推送结果：Gitee `ba44f8a..6702454`、GitHub `ba44f8a..6702454`，两端 `OK`。
-（顺带把此前一直没推上去的 `f8523da` 一起补到了两端——改造钩子的直接动因就是它当时静默没推成功。）
+已验证：Gitee `ba44f8a..6702454`、GitHub `ba44f8a..6702454`，两端 `OK`。
+
+> ⚠️ **别误读**：这里的 `ba44f8a..6702454` 是因为 `f8523da` 已被上一会话 reset（§2.2 第 6 条、§7.4），
+> 并不是"把漏推的 `f8523da` 补上了"。**改造钩子的真实动因是健壮性**（一处失败连累另一处、钩子不版本化），
+> 而不是"钩子当时推失败了"——那次钩子大概率是成功的，只是推的目标是临时 bare 仓库。
 
 ---
 
@@ -179,6 +187,15 @@ git diff --stat          # 应只涉及含标签的行，不应整文件重写
 12. **图片路径可能是坏链** —— 导出时往往不带图片目录，`./images/31.jpg` 转成 `![]()` 后依然是死链。**正确做法是提示用户补图，而不是删掉引用。**
 13. **表格里的加粗别顺手改** —— 见 §3.2，这是最容易"好心办坏事"的地方。
 14. **`<Mark bold>` 不是 HTML** —— 那是 WorkBuddy 资料库的文档组件格式，本脚本**不应**处理，遇到了不要扩大正则范围。
+
+### 7.4 协作 / 并发类
+
+15. **另一个窗口可能正在改同一个仓库** —— 本次开工时读到的 HEAD（`f8523da`）在 22 秒后被上一会话 `git reset HEAD~1` 抹掉，同时读到的临时 `pushurl` 也被还原。
+    **教训**：开工快照 ≠ 稳定状态。动手写文件前、提交前各核一次 HEAD；发现 HEAD 跳变先看 `git reflog --date=iso`。
+16. **验证钩子不要改 `remote.origin.pushurl`** —— 上一会话为了测钩子把 pushurl 指向 `C:/Users/lenovo/AppData/Local/Temp/bare-test.git`，收尾时才还原。一旦中途被打断，仓库就会留下一条指向临时路径的 pushurl，自动推送会**静默推到空气里**。
+    **更安全的做法**：测钩子直接 `git push <具体 url> <branch>`，或临时加独立 remote
+    （`git remote add baretest <path>`，测完 `git remote remove baretest`），**永远别动 origin**。
+17. **悬空提交不是丢代码** —— `f8523da` 被 reset 后仍可 `git show f8523da` 查看，只是不在任何分支上，最终会被 gc 回收。真要恢复：`git reflog` 定位后 `git cherry-pick f8523da`。
 
 ---
 
@@ -266,6 +283,7 @@ git rev-parse main
 ## 11. 续作 Checklist（新窗口开工前照着做）
 
 1. `cd /e/code/markdown-html-cleaner && git log --oneline -3 && git status --short` —— 看 HEAD 与工作区。
+   **若 HEAD 与本文档记录对不上，先 `git reflog --date=iso`** —— 很可能被另一个并发窗口动过（§7.4 第 15 条），这是本项目真实发生过一次的事，别急着怀疑自己。
 2. 跑 §10.3，确认双远端一致（不一致先补推）。
 3. **改脚本前**：先读 §3（设计决策）和 §7（踩坑点），别绕过围栏保护和同义转换两条铁律。
 4. **改脚本后**：`--scan` → `--dry-run --diff` → 执行 → 再 `--scan` → `git diff --stat`（警惕整文件重写）。
