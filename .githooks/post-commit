@@ -1,0 +1,40 @@
+#!/bin/sh
+# post-commit: auto-push the current branch to every pushurl of "origin"
+# (markdown-html-cleaner keeps two pushurls: Gitee + GitHub).
+#
+# Design notes:
+#   * Each pushurl is pushed separately, so one unreachable remote never
+#     blocks the other. `git push origin <branch>` would abort on the first
+#     failure and silently skip the rest.
+#   * A failed push never reverts or invalidates the local commit; the hook
+#     only warns so `git push` can be retried later.
+#   * Detached HEAD is skipped silently (no branch to push).
+#
+# Enable on a fresh clone:
+#   git config core.hooksPath .githooks
+
+branch=$(git symbolic-ref --quiet --short HEAD) || {
+    printf '%s\n' '[post-commit] detached HEAD, auto-push skipped.' >&2
+    exit 0
+}
+
+urls=$(git config --get-all remote.origin.pushurl)
+[ -n "$urls" ] || urls=$(git config --get remote.origin.url)
+
+[ -n "$urls" ] || {
+    printf '%s\n' '[post-commit] remote.origin has no url, auto-push skipped.' >&2
+    exit 0
+}
+
+for url in $urls; do
+    printf '%s\n' "[post-commit] pushing $branch -> $url"
+    if git push "$url" "$branch"; then
+        printf '%s\n' "[post-commit] OK   $url"
+    else
+        printf '%s\n' "[post-commit] FAIL $url (commit kept locally; retry with: git push $url $branch)" >&2
+    fi
+done
+
+# Always exit 0: the commit itself already succeeded, and a non-zero status
+# here can make an IDE report the whole commit as failed.
+exit 0
