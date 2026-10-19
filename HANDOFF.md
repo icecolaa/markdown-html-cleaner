@@ -1,7 +1,7 @@
 # HANDOFF.md — markdown-html-cleaner 交接文档
 
 > **给新窗口的话**：只读这一个文件就够接续。所有命令、状态、坑、待办都在下面。
-> 最后更新：2026-10-20（本次会话：冒烟验证 + 双远端自动同步改造 + 本文档）
+> 最后更新：2026-10-20（冒烟验证 + 双远端自动同步改造 + 建立本文档 + 修正 `f8523da` 被并发会话 reset 造成的失实叙述）
 
 ---
 
@@ -16,7 +16,7 @@
 | 远端 | fetch 走 GitHub；push 同时走 **Gitee + GitHub**（双远端） |
 | 自动同步 | `.githooks/post-commit` 在每次 commit 后逐远端推送，需 `core.hooksPath=.githooks`（已设好） |
 | 运行时 | `C:/Users/lenovo/.workbuddy/binaries/python/versions/3.13.12/python.exe`，**零第三方依赖** |
-| 当前可交付状态 | 可用、已验证；有 4 个已知缺陷（§8），均不影响主流程 |
+| 当前可交付状态 | 可用、已验证；有 **5 个已知缺陷**（§8 的 A/B/C/D/E，2 中 3 低），均不影响主流程 |
 
 ---
 
