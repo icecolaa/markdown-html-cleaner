@@ -10,17 +10,27 @@
 ## 用法
 
 ```bash
-# 扫描：代码块外还剩多少 HTML 标签（退出码 2 表示有残留）
+# 扫描：清洗前代码块外还剩多少 HTML 标签（退出码 2 = 有残留需要清洗）
 python scripts/clean_md.py <目录或文件> --scan
 
 # 预演：只统计 + 打印改动样例，不写盘
 python scripts/clean_md.py <目录或文件> --dry-run --diff
 
-# 执行
-python scripts/clean_md.py <目录或文件>
+# 执行（多章子目录加 --recursive）
+python scripts/clean_md.py <目录或文件> [--recursive]
 ```
 
 省略路径时处理当前目录下的 `.md` 文件。仅需 Python 标准库。
+
+## 目录结构
+
+| 路径 | 说明 |
+| --- | --- |
+| `scripts/clean_md.py` | 清洗工具本体 |
+| `SKILL.md` | 技能说明：触发场景、约束、陷阱、自检清单 |
+| `references/rules/` | 完整转换规则对照表 |
+| `references/sources/` | 语雀 / Notion / 网页各来源的特征与要点 |
+| `examples/` | 原始样例 + 脚本生成的期望输出（改脚本后用它回归） |
 
 ## 转换对照
 
@@ -38,7 +48,7 @@ python scripts/clean_md.py <目录或文件>
 
 ## 关键约束
 
-- **只处理代码块围栏之外**：``` 内的 `<class 'int'>`、`if a < b` 等原样保留
+- **只处理代码块围栏之外**：``` 与 `~~~` 内的 `<class 'int'>`、`if a < b` 等原样保留
 - **保留行尾两空格的 Markdown 硬换行**
 - **只做同义转换**，不改写措辞、不删减内容
 - 写盘前先 `--dry-run --diff`；未被 git 跟踪的文件先备份

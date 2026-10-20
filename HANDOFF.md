@@ -10,13 +10,14 @@
 | 项 | 值 |
 | --- | --- |
 | 项目定位 | 单个 Python 脚本构成的 **Skill**：把语雀 / Notion / 网页导出的 Markdown 里的 HTML 表现层标签，同义转回标准 Markdown |
-| 核心产物 | `scripts/clean_md.py`（187 行，仅用标准库） |
-| 配套文档 | `SKILL.md`（技能说明，含 frontmatter，供 Skill 运行时读取）、`README.md`（用法与实测） |
+| 核心产物 | `scripts/clean_md.py`（约 200 行，仅用标准库） |
+| 配套文档 | `SKILL.md`（技能说明，含 frontmatter，供 Skill 运行时读取）、`README.md`（用法与实测）、`references/`（规则细则 + 来源特征）、`examples/`（回归样例） |
+| TRACE 评测 | 综合 **4.72 / 5**（优秀），优化前 3.91（一般）—— 见 §13 |
 | 分支 / HEAD | `main`；三端一致于 2026-10-20 在 `6702454` 验证过（当前 HEAD 以 `git log -1` 为准，详见 §4） |
 | 远端 | fetch 走 GitHub；push 同时走 **Gitee + GitHub**（双远端） |
 | 自动同步 | `.githooks/post-commit` 在每次 commit 后逐远端推送，需 `core.hooksPath=.githooks`（已设好） |
 | 运行时 | `C:/Users/lenovo/.workbuddy/binaries/python/versions/3.13.12/python.exe`，**零第三方依赖** |
-| 当前可交付状态 | 可用、已验证；有 **5 个已知缺陷**（§8 的 A/B/C/D/E，2 中 3 低），均不影响主流程 |
+| 当前可交付状态 | 可用、已验证；§8 的 5 个已知缺陷（A/B/C/D/E）**已全部修复**；v1.1.0 已通过发布预检，待发布 |
 
 ---
 
@@ -42,6 +43,7 @@
 | 2026-10-20 00:32 | `ba44f8a` | `feat: 新增 markdown-html-cleaner 技能` —— 一次性落地 `scripts/clean_md.py` + `SKILL.md` + `README.md`，共 368 行新增 |
 | 2026-10-20 00:59 | ~~`f8523da`~~ | `test: 验证 post-commit 自动推送`（空提交）。**该提交已在 01:00:20 被 `git reset HEAD~1` 撤销，现已不在历史中，仅作为悬空对象残留**（详见 §7.4） |
 | 2026-10-20 01:05 | `6702454` | `docs: 新增 HANDOFF.md 交接文档与双远端自动推送钩子` —— 冒烟测试、发现缺陷（记入 §8）、钩子版本化改造、编写本文档 |
+| 2026-10-20 10:xx | 待提交 | **按 SkillHub TRACE 评测报告做一轮优化**：修完 §8 全部 5 个缺陷 + 重写 SKILL.md 结构 + 新增 `references/`、`examples/`、`LICENSE.txt`，综合分 3.91 → 4.72（详见 §13） |
 
 > 上表只列**实质性**提交。此后若仅是文档润色（如 `9fc476a` 补 `.gitignore` 与 SHA 说明）不再逐条追加，完整历史以 `git log --oneline` 为准。
 
@@ -199,41 +201,54 @@ git diff --stat          # 应只涉及含标签的行，不应整文件重写
 
 ---
 
-## 8. 已知缺陷（按优先级，均未修）
+## 8. 已知缺陷 —— **已全部修复**（2026-10-20）
 
-| # | 级别 | 问题 | 位置 | 修复方向 |
-| --- | --- | --- | --- | --- |
-| **A** | 中 | `--scan` 统计清洗**后**残留，脏文件退出码仍为 0，与 README/SKILL.md 承诺不符 | `scripts/clean_md.py:157` `leftover += count_tags(after)` | scan 模式改为统计 `count_tags(before)` 并在 >0 时 `return 2`；常规模式保留 after 残留统计（用于确认规则覆盖度） |
-| **C** | 中 | 只识别 ```` ``` ```` 围栏，`~~~` 围栏内会被误清洗，与 SKILL.md 声明冲突 | `scripts/clean_md.py:52-58` `iter_markdown_lines()` | 围栏判定改为同时匹配 ```` ``` ```` 与 `~~~`，并区分开关（记录围栏字符） |
-| **B** | 低 | `n_other` 多减一次 font 数，统计面板失真 | `scripts/clean_md.py:156` | `count_tags(before) - n_font - n_img`（去掉 `* 2`） |
-| **D** | 低 | 目录不递归，只取顶层 `.md` | `scripts/clean_md.py:123-126` `collect_files()` | 加 `--recursive`，用 `os.walk`；默认行为保持不变以免破坏既有调用 |
-| **E** | 低 | 无 `src` 的 `<img>` 整枚删除 | `scripts/clean_md.py:66-67` | 改为保留 alt/title 文本，或仅在整行只有该 img 时删行 |
+按 SkillHub TRACE 评测报告做优化时一并修完。记录保留备查，含"为什么这么修"和验证方式。
+
+| # | 级别 | 问题 | 修复方式与验证 |
+| --- | --- | --- | --- |
+| **A** | 中 | `--scan` 统计清洗**后**残留，脏文件退出码仍为 0，与文档承诺不符 | scan 模式改统计 `count_tags(before)`，>0 时 `return 2` ✅ 脏文件 exit=2、清洗后 exit=0 |
+| **C** | 中 | 只识别 ```` ``` ```` 围栏，`~~~` 内会被误清洗，与 SKILL.md 声明冲突 | `iter_markdown_lines()` 引入 `FENCE_MARKS = ('```', '~~~')` 并记录开启字符 ✅ `~~~` 内 `<font>` 原样保留 |
+| **B** | 低 | `n_other` 多减一次 font 数，统计面板失真 | 去掉 `* 2` ✅ 4 个 `<b>/<span>` 如实显示为"其他:4"（此前被钳到 0） |
+| **D** | 低 | 目录不递归，只取顶层 `.md` | 新增 `--recursive`（`os.walk`，跳过隐藏目录），默认行为不变 ✅ 递归能读到 `sub/b.md`，默认读不到 |
+| **E** | 低 | 无 `src` 的 `<img>` 整枚删除 | 保留 alt/title 文本 ✅ `<img alt="占位图">` → `占位图` |
+| **F**（本轮新发现） | 低 | `font/img` 统计把围栏内的标签也算进去，与实际改动不一致 | `count_tags(text, regex)` 改为围栏感知 ✅ 围栏内的 2 个 `<font>` 不再计入 |
+
+**顺带**：`--recursive` 模式下输出完整相对路径（避免子目录同名文件看不出是哪个）；
+`--scan` / `--dry-run` / 执行三种模式的措辞也区分开了（`需清洗` / `将改写` / `已改写`）。
 
 ---
 
 ## 9. 下一步计划
 
-**P0 — 消除"文档说的"和"代码做的"之间的裂缝**
-1. 修缺陷 A（`--scan` 退出码语义）。这是唯一会让用户**误判文件已干净**的问题。
-2. 修缺陷 C（`~~~` 围栏）。这是唯一会**静默损坏内容**的问题。
+### ✅ 已完成（2026-10-20）
 
-**P1 — 补齐回归保护**
-3. 建 `tests/` 目录：把 §6 的冒烟用例固化成回归样本（font / img / 表格加粗 / 代码块 / `~~~` 围栏 / HTML 实体 / 无 src 的 img 各一条），配一个纯标准库 `unittest` 入口，跑法写进 README。
-   **理由**：本项目是"改正则"型脚本，任何规则调整都可能连锁误伤，没有回归样本就不能安全地改。
+- 缺陷 A / C / B / D / E / F 全部修复（§8）
+- 回归样例 `examples/`（原始 + 脚本生成的期望输出）
+- 参考文档 `references/`（转换规则细则 + 各来源特征）
+- `LICENSE.txt`（补上 MIT 正文，此前只在 frontmatter 里声明）
+- `SKILL.md` 结构重写：When to Use / When NOT to Use / Rules / Gotchas / 自检清单 / 安全声明 / Step 1–5
 
-**P2 — 易用性**
-4. 修缺陷 D（`--recursive`，多章目录一把梭）。
-5. 修缺陷 B（统计面板）+ 缺陷 E（无 src 的 img）。
+### P0 — 发布 v1.1.0
 
-**P3 — 到大仓库真刀真枪跑一轮**
-6. 拿 PythonAI 教程仓库（9 章 + 入门讲义）做全量回归，核对"1 个文件零改动"的基线是否仍然成立，更新 README 实测数据。
+1. **从暂存目录发布，不要从仓库根目录发布**（§13.3）。发布前必跑 `--dry-run`。
+2. 发布后回详情页核对：版本号、token 预估消耗、`examples/` 是否可见。
 
-**P4 — 发布（候选，待用户确认）**
-7. `SKILL.md` 的 frontmatter（name/slug/version/tags）与 README 的 MIT 许可都已就位，具备发布条件。若确认发布：
-   ```bash
-   "$HOME/.local/bin/skillhub" publish <skill目录> --host https://api.skillhub.cn --dry-run
-   ```
-   （skillhub CLI **不在 PATH**，真实路径 `~/.local/bin/skillhub`，已登录账号 `user_5dea5c46`。先 `--dry-run`，确认无误再去掉该参数。）
+### P1 — 回归自动化
+
+3. `examples/` 目前靠手工 `diff`。下一步加 `scripts/run_examples.py`（纯标准库）：
+   自动对每个 `*.md` 跑清洗并与 `*.cleaned.md` 比对，一条命令出结果。
+   **理由**：本项目是"改正则"型脚本，动一条规则可能连锁误伤；样例已经有了，就该让它们自动跑起来。
+
+### P2 — 到大仓库真刀真枪跑一轮
+
+4. 拿 PythonAI 教程仓库（9 章 + 入门讲义）用 `--recursive` 做全量回归，
+   核对"1 个文件零改动"的基线是否仍成立，更新 README 实测数据。
+
+### P3 — 继续提分（可选，慎行）
+
+5. 想再冲 TRACE：C2 从 4.7 → 5.0 需 `references/` 文件数 ≥8 且 SKILL.md 正文 <150 行（当前 3 个 / 143 行）。
+   **但不建议**：为凑数堆 reference 会让技能臃肿、token 消耗上升，属于典型"刷分反噬"。
 
 ---
 
@@ -303,4 +318,81 @@ git rev-parse main
 | `README.md` | 对外说明：用法、转换对照、关键约束、实测数据 |
 | `.githooks/post-commit` | 双远端自动推送钩子（版本化，输出保持英文） |
 | `.gitignore` | 忽略 `.workbuddy/`（本地记忆数据）与 Python 缓存 |
-| `HANDOFF.md` | 本文档 |
+| `references/rules/conversion-rules.md` | 完整转换规则对照表（按需加载） |
+| `references/sources/*.md` | 语雀 / Notion·网页 的来源特征与处理要点 |
+| `examples/*.md` | 回归样例：原始 + 脚本生成的 `*.cleaned.md` 期望输出 |
+| `LICENSE.txt` | MIT 正文 |
+| `HANDOFF.md` | 本文档（**开发文档，不随技能发布**，见 §13.3） |
+
+---
+
+## 13. TRACE 评测与发布
+
+### 13.1 TRACE 是什么
+
+SkillHub 的技能质量评测体系：**T** 可信任度 / **R** 可靠性 / **A** 适用性 / **C** 规范性 / **E** 有效性，
+五维共 20 个子项，0–5 分。等级：4.5–5.0 优秀 / 4.0–4.4 良好 / 3.5–3.9 一般 / 3.0–3.4 较差 / <3.0 不合格。
+
+> ⚠️ **两点必须说清楚，别搞错**：
+> 1. `https://skillhub.cn/tutorials#trace-evaluation` **没有这个锚点** —— 该页只有 CLI 发布指南，
+>    上面不存在任何评测报告。别再去那个 URL 找分数。
+> 2. 本轮用的评测器是**社区技能** `@user_c1d16043/skill-trace-evaluation`（含 `scripts/trace_evaluate.py`），
+>    输出"确定性基分 + 证据包"，最终分还需 AI 阅读正文做 ±0.3 校准。
+>    **它是第三方工具，不等于平台官方详情页上的评分。**
+
+### 13.2 怎么复跑评测
+
+```bash
+PY="C:/Users/lenovo/.workbuddy/binaries/python/versions/3.13.12/python.exe"
+# 取评测器
+curl -sSL -o ev.zip "https://api.skillhub.cn/api/v1/download?slug=@user_c1d16043/skill-trace-evaluation"
+unzip -oq ev.zip -d ev
+# 跑
+"$PY" ev/scripts/trace_evaluate.py --skill-dir "E:/code/markdown-html-cleaner" --format json
+```
+
+### 13.3 发布：必须从暂存目录发（重要）
+
+`skillhub publish` 会打包目录里**除了** `.git/.idea/.vscode/node_modules/__pycache__`
+和 `.pyc/.DS_Store/Thumbs.db` 之外的**全部文件**。
+
+**从仓库根目录发布会把 `HANDOFF.md`（20 KB）、`.githooks/`、`.workbuddy/` 一起发出去**，
+包从 25 KB 膨胀到 51 KB，token 预估消耗直接翻倍。所以：
+
+```bash
+STAGE="C:/Users/lenovo/AppData/Local/Temp/skillhub-publish/markdown-html-cleaner"
+rm -rf "$STAGE" && mkdir -p "$STAGE"
+cd /e/code/markdown-html-cleaner
+cp SKILL.md README.md LICENSE.txt "$STAGE"/
+cp -r scripts references examples "$STAGE"/
+
+"$HOME/.local/bin/skillhub" publish "$STAGE" --dry-run                    # 预检
+"$HOME/.local/bin/skillhub" publish "$STAGE" --changelog "修复 xxx，新增 yyy"  # 正式发布
+```
+
+（CLI **不在 PATH**，真实路径 `~/.local/bin/skillhub`；已登录账号 `user_5dea5c46`。）
+
+### 13.4 本轮得分变化（2026-10-20）
+
+| 维度 | 优化前 | 优化后 | 变化 |
+| --- | --- | --- | --- |
+| T 可信任度 | 4.12 | **4.75** | +0.63 |
+| R 可靠性 | 3.50 | **4.58** | +1.08 |
+| A 适用性 | 4.45 | **4.58** | +0.13 |
+| C 规范性 | 3.75 | **4.88** | +1.13 |
+| E 有效性 | 3.75 | **4.83** | +1.08 |
+| **综合** | **3.91**（一般） | **4.72**（优秀） | **+0.81** |
+
+拉低分数的关键子项，本轮全部补上：
+
+| 子项 | 前 → 后 | 补了什么 |
+| --- | --- | --- |
+| T3 边界声明 | 3.0 → 4.8 | 新增 `When NOT to Use`（什么时候不该用 / 不适用） |
+| R1 陷阱与自检 | 3.0 → 4.5 | 新增 `## Gotchas` 章节 + `自检清单（验证）` |
+| R2 工作流 | 3.5 → 4.8 | 改为 `Step 1–5`，并补 `Quick Start / Usage / Prerequisites` |
+| C1 示例充分性 | 3.5 → 5.0 | 新增 `examples/`（5 个文件，cli 类阈值 ≥4） |
+| C2 渐进式披露 | 3.0 → 4.7 | 新增 `references/`（3 文件 / 2 子目录）+ 按需加载提示 |
+| E2 输出完整性 | 3.0 → 5.0 | 同上，`examples/` 达标 |
+
+> **一句实话**：这些改动本身都是真实改进（边界声明、自检清单、样例、LICENSE 都是该有的），
+> 顺带把评测脚本的关键词检测全部点亮。但 §9 P3 那条"为凑数堆文件"的反模式，别碰。
