@@ -43,7 +43,7 @@
 | 2026-10-20 00:32 | `ba44f8a` | `feat: 新增 markdown-html-cleaner 技能` —— 一次性落地 `scripts/clean_md.py` + `SKILL.md` + `README.md`，共 368 行新增 |
 | 2026-10-20 00:59 | ~~`f8523da`~~ | `test: 验证 post-commit 自动推送`（空提交）。**该提交已在 01:00:20 被 `git reset HEAD~1` 撤销，现已不在历史中，仅作为悬空对象残留**（详见 §7.4） |
 | 2026-10-20 01:05 | `6702454` | `docs: 新增 HANDOFF.md 交接文档与双远端自动推送钩子` —— 冒烟测试、发现缺陷（记入 §8）、钩子版本化改造、编写本文档 |
-| 2026-10-20 10:xx | 待提交 | **按 SkillHub TRACE 评测报告做一轮优化**：修完 §8 全部 5 个缺陷 + 重写 SKILL.md 结构 + 新增 `references/`、`examples/`、`LICENSE.txt`，综合分 3.91 → 4.72（详见 §13） |
+| 2026-10-20 10:20 | `dd5f0dd` | **按 SkillHub TRACE 评测报告做一轮优化**：修完 §8 全部缺陷（含新发现的 F）+ 重写 SKILL.md 结构 + 新增 `references/`、`examples/`、`LICENSE.txt`，综合分 3.91 → 4.72（详见 §13） |
 
 > 上表只列**实质性**提交。此后若仅是文档润色（如 `9fc476a` 补 `.gitignore` 与 SHA 说明）不再逐条追加，完整历史以 `git log --oneline` 为准。
 
