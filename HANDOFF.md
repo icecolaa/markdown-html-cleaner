@@ -324,6 +324,7 @@ git rev-parse main
 | `references/sources/*.md` | 语雀 / Notion·网页 的来源特征与处理要点 |
 | `examples/*.md` | 回归样例：原始 + 脚本生成的 `*.cleaned.md` 期望输出 |
 | `LICENSE.txt` | MIT 正文 |
+| `docs/trace-report.md` | TRACE 评测报告：五维 + 20 子项前后对照（开发文档，不随技能发布） |
 | `HANDOFF.md` | 本文档（**开发文档，不随技能发布**，见 §13.3） |
 
 ---
@@ -341,6 +342,8 @@ SkillHub 的技能质量评测体系：**T** 可信任度 / **R** 可靠性 / **
 > 2. 本轮用的评测器是**社区技能** `@user_c1d16043/skill-trace-evaluation`（含 `scripts/trace_evaluate.py`），
 >    输出"确定性基分 + 证据包"，最终分还需 AI 阅读正文做 ±0.3 校准。
 >    **它是第三方工具，不等于平台官方详情页上的评分。**
+
+完整的 20 子项前后对照见 **[`docs/trace-report.md`](docs/trace-report.md)**（本表只放结论）。
 
 ### 13.2 怎么复跑评测
 
